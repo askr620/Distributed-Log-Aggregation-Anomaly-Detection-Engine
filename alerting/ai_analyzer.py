@@ -10,7 +10,7 @@ from consumers.config import settings
 
 logger = logging.getLogger(__name__)
 
-OPENAI_CHAT_URL = "https://api.openai.com/v1/chat/completions"
+OPENAI_CHAT_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 _SYSTEM_PROMPT = (
     "You are an expert site reliability engineer. "

@@ -36,7 +36,7 @@ class ConsumerSettings:
     smtp_user: str = getenv("SMTP_USER", "")
     smtp_password: str = getenv("SMTP_PASSWORD", "")
     openai_api_key: str = getenv("OPENAI_API_KEY", "")
-    openai_model: str = getenv("OPENAI_MODEL", "gpt-4o-mini")
+    openai_model: str = getenv("OPENAI_MODEL", "llama3-8b-8192")
 
 
 settings = ConsumerSettings()

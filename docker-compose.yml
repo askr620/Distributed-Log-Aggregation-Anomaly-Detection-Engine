@@ -1,0 +1,135 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale-data:/var/lib/postgresql/data
+      - ./storage/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql:ro
+
+  ingestion:
+    build:
+      context: ./ingestion
+    env_file:
+      - .env
+    depends_on:
+      - kafka
+    ports:
+      - "8000:8000"
+
+  storage-consumer:
+    build:
+      context: .
+      dockerfile: consumers/Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      - kafka
+      - timescaledb
+    command: ["python", "-m", "consumers.storage_consumer"]
+
+  anomaly-consumer:
+    build:
+      context: .
+      dockerfile: consumers/Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      - kafka
+      - redis
+    command: ["python", "-m", "consumers.anomaly_consumer"]
+
+  alert-consumer:
+    build:
+      context: .
+      dockerfile: consumers/Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      - kafka
+      - timescaledb
+    command: ["python", "-m", "consumers.alert_consumer"]
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      - kafka
+    ports:
+      - "8001:8001"
+
+  auth-mock:
+    profiles:
+      - demo
+    build:
+      context: .
+      dockerfile: mock_services/Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      - ingestion
+    command: ["python", "-m", "mock_services.auth_service"]
+
+  payment-mock:
+    profiles:
+      - demo
+    build:
+      context: .
+      dockerfile: mock_services/Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      - ingestion
+    command: ["python", "-m", "mock_services.payment_service"]
+
+  order-mock:
+    profiles:
+      - demo
+    build:
+      context: .
+      dockerfile: mock_services/Dockerfile
+    env_file:
+      - .env
+    depends_on:
+      - ingestion
+    command: ["python", "-m", "mock_services.order_service"]
+
+volumes:
+  timescale-data:

@@ -1,0 +1,1165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Log Engine Command Center</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #080d12;
+      --nav: #0b1118;
+      --surface: #111922;
+      --surface-2: #16212d;
+      --surface-3: #0d151e;
+      --border: #243140;
+      --border-soft: #1b2632;
+      --text: #eef5fc;
+      --muted: #9aa9ba;
+      --muted-2: #6f8194;
+      --accent: #35bdf8;
+      --accent-2: #22c55e;
+      --warn: #fbbf24;
+      --danger: #fb7185;
+      --critical: #f97316;
+      --shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button,
+    input,
+    select { font: inherit; }
+
+    .app {
+      display: grid;
+      grid-template-columns: 248px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 18px 14px;
+      border-right: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(53, 189, 248, 0.08), transparent 220px), var(--nav);
+      overflow: auto;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 6px 18px;
+    }
+
+    .mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #031019;
+      font-weight: 900;
+      flex: 0 0 auto;
+    }
+
+    .brand-title {
+      font-size: 15px;
+      font-weight: 850;
+      line-height: 1.1;
+    }
+
+    .brand-subtitle {
+      margin-top: 3px;
+      color: var(--muted-2);
+      font-size: 12px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 6px;
+    }
+
+    .nav button {
+      width: 100%;
+      min-height: 38px;
+      display: grid;
+      grid-template-columns: 24px minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      text-align: left;
+      cursor: pointer;
+      padding: 0 10px;
+    }
+
+    .nav button.active,
+    .nav button:hover {
+      color: var(--text);
+      border-color: var(--border);
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .nav-icon {
+      width: 24px;
+      height: 24px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 850;
+      background: #0a121a;
+    }
+
+    .main {
+      min-width: 0;
+      padding: 18px 20px 32px;
+    }
+
+    .topbar {
+      min-height: 58px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.15;
+      letter-spacing: 0;
+    }
+
+    .page-note {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .status-strip {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill {
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--muted);
+      padding: 0 10px;
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--danger);
+      box-shadow: 0 0 0 4px rgba(251, 113, 133, 0.12);
+    }
+
+    .dot.ok {
+      background: var(--accent-2);
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.14);
+    }
+
+    .login {
+      display: grid;
+      grid-template-columns: 1.1fr 180px 180px 96px 96px 96px;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .login.authed {
+      border-color: rgba(34, 197, 94, 0.32);
+    }
+
+    .login-copy {
+      min-width: 0;
+      align-self: center;
+    }
+
+    .login-title {
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .login-help {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .auth-message {
+      grid-column: 1 / -1;
+      min-height: 24px;
+      display: flex;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .auth-message.error { color: var(--danger); }
+    .auth-message.ok { color: var(--accent-2); }
+
+    input,
+    select {
+      width: 100%;
+      height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #0a121a;
+      color: var(--text);
+      padding: 0 11px;
+      outline: none;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: rgba(53, 189, 248, 0.62);
+      box-shadow: 0 0 0 3px rgba(53, 189, 248, 0.11);
+    }
+
+    .button {
+      height: 38px;
+      border: 1px solid rgba(53, 189, 248, 0.44);
+      border-radius: 8px;
+      background: rgba(53, 189, 248, 0.12);
+      color: var(--text);
+      font-weight: 850;
+      cursor: pointer;
+      padding: 0 12px;
+    }
+
+    .button:hover { background: rgba(53, 189, 248, 0.18); }
+
+    .button.danger {
+      border-color: rgba(251, 113, 133, 0.44);
+      background: rgba(251, 113, 133, 0.12);
+    }
+
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .overview {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .two-col {
+      grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
+      align-items: start;
+    }
+
+    .three-col {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-head {
+      min-height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-soft);
+      background: rgba(22, 33, 45, 0.76);
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 850;
+    }
+
+    .card-body {
+      padding: 14px;
+    }
+
+    .metric-card {
+      min-height: 116px;
+      padding: 15px;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 850;
+      letter-spacing: 0.08em;
+    }
+
+    .metric-value {
+      margin-top: 12px;
+      font-size: 30px;
+      line-height: 1;
+      font-weight: 900;
+    }
+
+    .metric-foot {
+      margin-top: 10px;
+      color: var(--muted-2);
+      font-size: 12px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: grid;
+      gap: 14px;
+    }
+
+    .table-list {
+      display: grid;
+      gap: 9px;
+      max-height: 540px;
+      overflow: auto;
+    }
+
+    .row {
+      padding: 11px;
+      border: 1px solid var(--border-soft);
+      border-radius: 8px;
+      background: rgba(13, 21, 30, 0.72);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .row strong { color: var(--text); }
+
+    .row-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .badge {
+      min-height: 24px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .badge.ok { color: var(--accent-2); border-color: rgba(34, 197, 94, 0.36); }
+    .badge.warn { color: var(--warn); border-color: rgba(251, 191, 36, 0.36); }
+    .badge.error { color: var(--danger); border-color: rgba(251, 113, 133, 0.36); }
+    .badge.critical { color: var(--critical); border-color: rgba(249, 115, 22, 0.4); }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .bars {
+      display: grid;
+      gap: 10px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 145px minmax(0, 1fr) 54px;
+      gap: 9px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .bar-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .bar-track {
+      height: 9px;
+      border-radius: 999px;
+      background: #081017;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    }
+
+    .line-chart {
+      width: 100%;
+      height: 180px;
+      border: 1px solid var(--border-soft);
+      border-radius: 8px;
+      background: #0a121a;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 0.8fr 0.8fr auto;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .field-hint {
+      color: var(--muted-2);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .section-help {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .split-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    @media (max-width: 1100px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .two-col,
+      .three-col { grid-template-columns: 1fr; }
+      .login,
+      .toolbar,
+      .form-grid { grid-template-columns: 1fr; }
+      .auth-message { grid-column: auto; }
+    }
+
+    @media (max-width: 620px) {
+      .main { padding: 14px 10px 24px; }
+      .nav { grid-template-columns: 1fr; }
+      .topbar { grid-template-columns: 1fr; }
+      .status-strip { justify-content: flex-start; }
+      .overview { grid-template-columns: 1fr; }
+      .bar-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="mark">AO</div>
+        <div>
+          <div class="brand-title">Log Engine</div>
+          <div class="brand-subtitle">Command Center</div>
+        </div>
+      </div>
+      <nav class="nav" aria-label="Dashboard sections">
+        <button class="active" data-section="overview"><span class="nav-icon">O</span><span>Overview</span></button>
+        <button data-section="logs"><span class="nav-icon">L</span><span>Log Explorer</span></button>
+        <button data-section="anomalies"><span class="nav-icon">A</span><span>Anomalies</span></button>
+        <button data-section="rules"><span class="nav-icon">R</span><span>Alert Rules</span></button>
+        <button data-section="infra"><span class="nav-icon">I</span><span>Infrastructure</span></button>
+        <button data-section="users"><span class="nav-icon">U</span><span>RUM</span></button>
+        <button data-section="synthetics"><span class="nav-icon">S</span><span>Synthetics</span></button>
+        <button data-section="security"><span class="nav-icon">X</span><span>Security</span></button>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1>Log Engine Command Center</h1>
+          <div class="page-note">Monitor logs, service health, alerts, and user experience from one operations console.</div>
+        </div>
+        <div class="status-strip">
+          <span class="pill"><span id="socketDot" class="dot"></span><span id="socketText">live feed offline</span></span>
+          <span id="authPill" class="pill">not logged in</span>
+        </div>
+      </header>
+
+      <section id="loginPanel" class="login">
+        <div class="login-copy">
+          <div class="login-title">Secure Access</div>
+          <div id="loginHelp" class="login-help">Sign in to manage monitoring data and alert policies.</div>
+        </div>
+        <input id="username" aria-label="Username" placeholder="Username" autocomplete="username" />
+        <input id="password" type="password" aria-label="Password" placeholder="Password" autocomplete="current-password" />
+        <button id="loginButton" class="button" type="button">Sign in</button>
+        <button id="logoutButton" class="button danger" type="button">Logout</button>
+        <button id="refreshButton" class="button" type="button">Refresh</button>
+        <div id="authMessage" class="auth-message">Sign in to load operational data.</div>
+      </section>
+
+      <section id="overview" class="section active">
+        <div class="grid overview">
+          <div class="card metric-card"><div class="metric-label">Total Logs</div><div id="mLogs" class="metric-value">0</div><div class="metric-foot">all stored logs</div></div>
+          <div class="card metric-card"><div class="metric-label">Total Errors</div><div id="mErrors" class="metric-value">0</div><div class="metric-foot">all error + critical logs</div></div>
+          <div class="card metric-card"><div class="metric-label">Services</div><div id="mServices" class="metric-value">0</div><div class="metric-foot">active log sources</div></div>
+          <div class="card metric-card"><div class="metric-label">Anomalies</div><div id="mAnomalies" class="metric-value">0</div><div class="metric-foot">saved anomaly history</div></div>
+          <div class="card metric-card"><div class="metric-label">Infra</div><div id="mInfra" class="metric-value">-</div><div class="metric-foot">healthy services</div></div>
+        </div>
+        <div class="grid two-col">
+          <div class="card">
+            <div class="card-head"><h2 class="card-title">Log Timeline</h2><span class="muted">15 minutes</span></div>
+            <div class="card-body"><svg id="timelineChart" class="line-chart" viewBox="0 0 760 180" role="img" aria-label="log timeline"></svg></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2 class="card-title">Service Volume</h2></div>
+            <div id="serviceBars" class="card-body bars"></div>
+          </div>
+        </div>
+        <div class="grid three-col">
+          <div class="card"><div class="card-head"><h2 class="card-title">Latest Anomalies</h2></div><div id="latestAnomalies" class="card-body table-list"></div></div>
+          <div class="card"><div class="card-head"><h2 class="card-title">Infrastructure</h2></div><div id="overviewInfra" class="card-body table-list"></div></div>
+          <div class="card"><div class="card-head"><h2 class="card-title">Security Signals</h2></div><div id="overviewSecurity" class="card-body table-list"></div></div>
+        </div>
+      </section>
+
+      <section id="logs" class="section">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Log Explorer</h2>
+              <div class="section-help">Search stored logs by service, severity, tenant, or message text.</div>
+            </div>
+            <span class="muted">database search</span>
+          </div>
+          <div class="card-body">
+            <div class="toolbar">
+              <div class="field">
+                <label for="logService">Service</label>
+                <input id="logService" placeholder="payment-service" />
+              </div>
+              <div class="field">
+                <label for="logLevel">Severity</label>
+                <select id="logLevel"><option value="">All levels</option><option>INFO</option><option>WARN</option><option>ERROR</option><option>CRITICAL</option></select>
+              </div>
+              <div class="field">
+                <label for="logText">Message</label>
+                <input id="logText" placeholder="payment failed" />
+              </div>
+              <div class="field">
+                <label for="logTenant">Tenant</label>
+                <input id="logTenant" value="default" placeholder="default" />
+              </div>
+              <div class="field">
+                <label>&nbsp;</label>
+                <button id="searchLogs" class="button" type="button">Search</button>
+              </div>
+            </div>
+            <div id="logsList" class="table-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="anomalies" class="section">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Anomaly Feed</h2>
+              <div class="section-help">Review saved anomalies and new live detections from the error-spike detector.</div>
+            </div>
+            <span class="muted">history + live</span>
+          </div>
+          <div id="anomalyList" class="card-body table-list"></div>
+        </div>
+      </section>
+
+      <section id="rules" class="section">
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Alert Rule Manager</h2>
+              <div class="section-help">Set service-level thresholds for anomaly detection and alert routing.</div>
+            </div>
+            <span class="muted">rule control</span>
+          </div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="field">
+                <label for="ruleName">Rule name</label>
+                <input id="ruleName" placeholder="Payment spike policy" value="Payment error spike" />
+                <div class="field-hint">Human-readable name shown in the rules list.</div>
+              </div>
+              <div class="field">
+                <label for="ruleService">Service scope</label>
+                <input id="ruleService" placeholder="payment-service or *" value="payment-service" />
+                <div class="field-hint">Use a service name, or * for every service.</div>
+              </div>
+              <div class="field">
+                <label for="ruleLevel">Log level</label>
+                <select id="ruleLevel"><option>ERROR</option><option>CRITICAL</option><option>WARN</option><option>INFO</option></select>
+                <div class="field-hint">Which level this rule watches.</div>
+              </div>
+              <div class="field">
+                <label for="ruleThreshold">Z-score threshold</label>
+                <input id="ruleThreshold" type="number" min="0.1" step="0.1" value="2.5" />
+                <div class="field-hint">Lower is more sensitive. Higher creates fewer alerts.</div>
+              </div>
+              <div class="field">
+                <label>&nbsp;</label>
+                <button id="saveRule" class="button" type="button">Create rule</button>
+              </div>
+            </div>
+            <div id="rulesList" class="table-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="infra" class="section">
+        <div class="card">
+          <div class="card-head"><div><h2 class="card-title">Infrastructure Monitoring</h2><div class="section-help">Track connectivity and latency for Kafka, Redis, TimescaleDB, and ingestion.</div></div><span class="muted">Kafka, Redis, DB, ingestion</span></div>
+          <div id="infraList" class="card-body table-list"></div>
+        </div>
+      </section>
+
+      <section id="users" class="section">
+        <div class="card">
+          <div class="card-head"><div><h2 class="card-title">Real User Monitoring</h2><div class="section-help">Review browser performance and frontend error events captured from monitored pages.</div></div><span class="muted">browser events</span></div>
+          <div id="rumList" class="card-body table-list"></div>
+        </div>
+      </section>
+
+      <section id="synthetics" class="section">
+        <div class="card">
+          <div class="card-head"><div><h2 class="card-title">Synthetic Monitoring</h2><div class="section-help">Review scheduled endpoint checks and response latency.</div></div><span class="muted">endpoint checks</span></div>
+          <div id="syntheticList" class="card-body table-list"></div>
+        </div>
+      </section>
+
+      <section id="security" class="section">
+        <div class="card">
+          <div class="card-head"><div><h2 class="card-title">Security Monitoring</h2><div class="section-help">Surface recent authentication and credential-related warning or error logs.</div></div><span class="muted">security signals</span></div>
+          <div id="securityList" class="card-body table-list"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const state = {
+      token: localStorage.getItem("dashboardToken") || localStorage.getItem("advancedDashboardToken") || "",
+      metrics: null,
+      anomalies: [],
+      infra: [],
+      rules: [],
+      section: "overview",
+      authVersion: 0,
+      refreshTimer: null,
+      refreshInFlight: false
+    };
+    const AUTO_REFRESH_MS = 5000;
+
+    const $ = (id) => document.getElementById(id);
+
+    function badge(text, type = "") {
+      return `<span class="badge ${type}">${text}</span>`;
+    }
+
+    function formatNum(value) {
+      const num = Number(value || 0);
+      return Number.isInteger(num) ? String(num) : num.toFixed(2);
+    }
+
+    function formatTime(value) {
+      if (!value) return "-";
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+    }
+
+    function row(content) {
+      return `<div class="row">${content}</div>`;
+    }
+
+    function empty(text) {
+      return row(`<span class="muted">${text}</span>`);
+    }
+
+    function setMessage(text, type = "") {
+      const el = $("authMessage");
+      el.textContent = text;
+      el.className = `auth-message ${type}`.trim();
+    }
+
+    function hasActiveSession(version) {
+      return Boolean(state.token) && state.authVersion === version;
+    }
+
+    function stopAutoRefresh() {
+      if (state.refreshTimer) {
+        clearInterval(state.refreshTimer);
+        state.refreshTimer = null;
+      }
+    }
+
+    function startAutoRefresh() {
+      stopAutoRefresh();
+      state.refreshTimer = setInterval(() => {
+        if (state.token && !state.refreshInFlight) {
+          refreshAll({ silent: true });
+        }
+      }, AUTO_REFRESH_MS);
+    }
+
+    async function api(path, options = {}) {
+      const headers = { ...(options.headers || {}) };
+      if (state.token) headers.Authorization = `Bearer ${state.token}`;
+      if (options.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
+      const method = (options.method || "GET").toUpperCase();
+      const requestPath = method === "GET" ? `${path}${path.includes("?") ? "&" : "?"}_=${Date.now()}` : path;
+      const response = await fetch(requestPath, { ...options, method, headers, cache: "no-store" });
+      if (response.status === 401) {
+        clearAuth("Session expired. Sign in again.");
+        throw new Error("Unauthorized");
+      }
+      if (!response.ok) throw new Error(`${response.status} ${await response.text()}`);
+      return response.json();
+    }
+
+    function setAuth(ok) {
+      $("loginPanel").classList.toggle("authed", ok);
+      $("authPill").textContent = ok ? "authenticated" : "not signed in";
+      $("authPill").style.borderColor = ok ? "rgba(34,197,94,.36)" : "";
+      $("refreshButton").disabled = !ok;
+      $("logoutButton").disabled = !ok;
+    }
+
+    function resetDashboardData() {
+      state.metrics = null;
+      state.anomalies = [];
+      state.infra = [];
+      state.rules = [];
+
+      $("mLogs").textContent = "0";
+      $("mErrors").textContent = "0";
+      $("mServices").textContent = "0";
+      $("mAnomalies").textContent = "0";
+      $("mInfra").textContent = "-";
+
+      $("timelineChart").innerHTML = "";
+      $("serviceBars").innerHTML = empty("Sign in to view service volume.");
+      $("latestAnomalies").innerHTML = empty("Sign in to view anomalies.");
+      $("overviewInfra").innerHTML = empty("Sign in to view infrastructure checks.");
+      $("overviewSecurity").innerHTML = empty("Sign in to view security signals.");
+      $("logsList").innerHTML = empty("Sign in to search logs.");
+      $("anomalyList").innerHTML = empty("Sign in to view anomaly history.");
+      $("rulesList").innerHTML = empty("Sign in to manage alert rules.");
+      $("infraList").innerHTML = empty("Sign in to view infrastructure checks.");
+      $("rumList").innerHTML = empty("Sign in to view user monitoring events.");
+      $("syntheticList").innerHTML = empty("Sign in to view synthetic checks.");
+      $("securityList").innerHTML = empty("Sign in to view security signals.");
+    }
+
+    function clearAuth(message = "Signed out.") {
+      state.authVersion += 1;
+      stopAutoRefresh();
+      state.token = "";
+      localStorage.removeItem("dashboardToken");
+      localStorage.removeItem("advancedDashboardToken");
+      setAuth(false);
+      resetDashboardData();
+      requestAnimationFrame(resetDashboardData);
+      setTimeout(resetDashboardData, 100);
+      setMessage(message, message.includes("expired") || message.includes("invalid") ? "error" : "");
+    }
+
+    function logoutNow(event) {
+      event?.preventDefault();
+      event?.stopPropagation();
+      event?.stopImmediatePropagation?.();
+      clearAuth("Signed out. Sign in again to load operational data.");
+      setSection("overview");
+    }
+
+    async function validateSession() {
+      if (!state.token) {
+        clearAuth("Sign in to load operational data.");
+        return false;
+      }
+      const version = state.authVersion;
+      try {
+        const me = await api("/api/me");
+        if (!hasActiveSession(version)) return false;
+        setAuth(true);
+        setMessage(`Signed in as ${me.username} for tenant ${me.tenant_id}.`, "ok");
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    async function login() {
+      setMessage("Signing in...");
+      resetDashboardData();
+      const data = await api("/api/login", {
+        method: "POST",
+        body: JSON.stringify({ username: $("username").value, password: $("password").value })
+      });
+      state.authVersion += 1;
+      state.token = data.token;
+      localStorage.setItem("dashboardToken", data.token);
+      localStorage.removeItem("advancedDashboardToken");
+      setAuth(true);
+      setMessage("Signed in. Loading monitoring data...", "ok");
+      await refreshAll();
+      startAutoRefresh();
+    }
+
+    function renderServices() {
+      const services = state.metrics?.by_service || [];
+      if (!services.length) {
+        $("serviceBars").innerHTML = empty("No service volume available.");
+        return;
+      }
+      const max = Math.max(...services.map((item) => Number(item.count || 0)), 1);
+      $("serviceBars").innerHTML = services.slice(0, 10).map((item) => {
+        const width = Math.round((Number(item.count || 0) / max) * 100);
+        return `<div class="bar-row"><div class="bar-label">${item.service}</div><div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div><div>${item.count}</div></div>`;
+      }).join("");
+    }
+
+    function renderTimeline() {
+      const svg = $("timelineChart");
+      const rows = state.metrics?.timeline || [];
+      const buckets = new Map();
+      for (const item of rows) {
+        const key = item.minute;
+        buckets.set(key, (buckets.get(key) || 0) + Number(item.count || 0));
+      }
+      const values = [...buckets.values()];
+      const max = Math.max(...values, 1);
+      const width = 760;
+      const height = 180;
+      const pad = 18;
+      const points = values.map((value, index) => {
+        const x = values.length <= 1 ? pad : pad + (index / (values.length - 1)) * (width - pad * 2);
+        const y = height - pad - (value / max) * (height - pad * 2);
+        return `${x},${y}`;
+      }).join(" ");
+      svg.innerHTML = `
+        <defs><linearGradient id="lineGlow" x1="0" x2="1"><stop stop-color="#35bdf8"/><stop offset="1" stop-color="#22c55e"/></linearGradient></defs>
+        <path d="M ${pad} ${height - pad} H ${width - pad}" stroke="#243140" stroke-width="1"/>
+        <path d="M ${pad} ${pad} V ${height - pad}" stroke="#243140" stroke-width="1"/>
+        ${points ? `<polyline points="${points}" fill="none" stroke="url(#lineGlow)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>` : ""}
+        <text x="${pad}" y="${pad + 12}" fill="#6f8194" font-size="12">${values.length} buckets</text>
+      `;
+    }
+
+    function renderAnomalies() {
+      const html = state.anomalies.length ? state.anomalies.map((item) => {
+        const severity = Number(item.z_score || 0) >= 7 ? "CRITICAL" : item.level;
+        const type = severity === "CRITICAL" ? "critical" : "error";
+        return row(`<div class="row-grid"><div><strong>${item.service}</strong> ${badge(severity, type)}<br>Current ${formatNum(item.current_count)} vs mean ${formatNum(item.mean)} | Z-score ${formatNum(item.z_score)} | ${formatTime(item.fired_at)}</div><div>${badge(item.tenant_id || "default")}</div></div>`);
+      }).join("") : empty("No anomalies recorded.");
+      $("anomalyList").innerHTML = html;
+      $("latestAnomalies").innerHTML = html;
+    }
+
+    function renderInfra() {
+      const ok = state.infra.filter((item) => item.status === "ok").length;
+      $("mInfra").textContent = `${ok}/${state.infra.length || 0}`;
+      const html = state.infra.length ? state.infra.map((item) => {
+        const type = item.status === "ok" ? "ok" : "error";
+        return row(`<div class="row-grid"><div><strong>${item.name}</strong> ${badge(item.status, type)}<br>${formatNum(item.latency_ms)} ms${item.error ? `<br>${item.error}` : ""}</div><div>${type === "ok" ? "up" : "down"}</div></div>`);
+      }).join("") : empty("No infrastructure checks available.");
+      $("infraList").innerHTML = html;
+      $("overviewInfra").innerHTML = html;
+    }
+
+    function renderRules() {
+      $("rulesList").innerHTML = state.rules.length ? state.rules.map((rule) => row(`
+        <div class="row-grid">
+          <div>
+            <strong>${rule.name}</strong> ${badge(rule.enabled ? "enabled" : "disabled", rule.enabled ? "ok" : "warn")}<br>
+            Service: <strong>${rule.service}</strong> | Level: <strong>${rule.level}</strong> | Trigger: <strong>Z-score above ${formatNum(rule.z_score_threshold)}</strong><br>
+            Created: ${formatTime(rule.created_at)}
+          </div>
+          <div class="split-actions">
+            <button class="button" data-toggle="${rule.id}" data-enabled="${!rule.enabled}">${rule.enabled ? "Disable" : "Enable"}</button>
+            <button class="button danger" data-delete="${rule.id}">Delete</button>
+          </div>
+        </div>
+      `)).join("") : empty("No alert rules configured.");
+      document.querySelectorAll("[data-toggle]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          await api(`/api/alert-rules/${button.dataset.toggle}`, { method: "PATCH", body: JSON.stringify({ enabled: button.dataset.enabled === "true" }) });
+          await loadRules();
+        });
+      });
+      document.querySelectorAll("[data-delete]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          await api(`/api/alert-rules/${button.dataset.delete}`, { method: "DELETE" });
+          await loadRules();
+        });
+      });
+    }
+
+    function renderOverview() {
+      const allTimeTotals = state.metrics?.all_time_totals || {};
+      const recentTotals = state.metrics?.totals || {};
+      $("mLogs").textContent = allTimeTotals.total || 0;
+      $("mErrors").textContent = allTimeTotals.errors || 0;
+      $("mServices").textContent = recentTotals.services || 0;
+      $("mAnomalies").textContent = state.metrics?.anomaly_total || 0;
+      renderServices();
+      renderTimeline();
+    }
+
+    async function loadMetrics() {
+      const version = state.authVersion;
+      const metrics = await api("/api/metrics/summary");
+      if (!hasActiveSession(version)) return;
+      state.metrics = metrics;
+      renderOverview();
+    }
+
+    async function loadAnomalies() {
+      const version = state.authVersion;
+      const anomalies = await api("/api/anomalies");
+      if (!hasActiveSession(version)) return;
+      state.anomalies = anomalies;
+      renderAnomalies();
+    }
+
+    async function loadInfra() {
+      const version = state.authVersion;
+      const infra = await api("/api/infrastructure/status");
+      if (!hasActiveSession(version)) return;
+      state.infra = infra;
+      renderInfra();
+    }
+
+    async function loadRules() {
+      const version = state.authVersion;
+      const rules = await api("/api/alert-rules");
+      if (!hasActiveSession(version)) return;
+      state.rules = rules;
+      renderRules();
+    }
+
+    async function loadRum() {
+      const version = state.authVersion;
+      const data = await api("/api/rum/summary");
+      if (!hasActiveSession(version)) return;
+      const events = data.events || [];
+      $("rumList").innerHTML = events.length ? events.map((item) => row(`<strong>${item.event_type}</strong><br>${item.count} events${item.avg_value ? ` | avg ${formatNum(item.avg_value)} ms` : ""}`)).join("") : empty("No user monitoring events recorded.");
+    }
+
+    async function loadSynthetics() {
+      const version = state.authVersion;
+      const rows = await api("/api/synthetics");
+      if (!hasActiveSession(version)) return;
+      $("syntheticList").innerHTML = rows.length ? rows.map((item) => {
+        const type = item.status === "ok" ? "ok" : "error";
+        return row(`<strong>${item.target}</strong> ${badge(item.status, type)}<br>${formatNum(item.latency_ms)} ms | status ${item.status_code || "-"} | ${formatTime(item.checked_at)}${item.error ? `<br>${item.error}` : ""}`);
+      }).join("") : empty("No synthetic checks recorded.");
+    }
+
+    async function loadSecurity() {
+      const version = state.authVersion;
+      const data = await api("/api/security/summary");
+      if (!hasActiveSession(version)) return;
+      const signals = data.signals || [];
+      const html = signals.length ? signals.map((item) => row(`<strong>${item.service}</strong> ${badge("signal", "warn")}<br>${item.suspicious_events} suspicious events`)).join("") : empty("No security signals detected in the last 30 minutes.");
+      $("securityList").innerHTML = html;
+      $("overviewSecurity").innerHTML = html;
+    }
+
+    async function searchLogs() {
+      const version = state.authVersion;
+      const params = new URLSearchParams();
+      if ($("logTenant").value) params.set("tenant_id", $("logTenant").value.trim());
+      if ($("logService").value) params.set("service", $("logService").value.trim());
+      if ($("logLevel").value) params.set("level", $("logLevel").value);
+      if ($("logText").value) params.set("q", $("logText").value.trim());
+      params.set("limit", "100");
+      const rows = await api(`/api/logs?${params}`);
+      if (!hasActiveSession(version)) return;
+      $("logsList").innerHTML = rows.length ? rows.map((item) => row(`<strong>${item.service}</strong> ${badge(item.level, item.level === "CRITICAL" ? "critical" : item.level === "ERROR" ? "error" : "")} ${badge(item.tenant_id || "default")}<br>${item.message}<br>${formatTime(item.created_at)}`)).join("") : empty("No logs match the current filters.");
+    }
+
+    async function refreshAll(options = {}) {
+      if (!state.token) {
+        setAuth(false);
+        resetDashboardData();
+        setMessage("Sign in to load operational data.");
+        return;
+      }
+      if (state.refreshInFlight) return;
+      state.refreshInFlight = true;
+      setAuth(true);
+      const version = state.authVersion;
+      const tasks = [loadMetrics, loadAnomalies, loadInfra, loadRules, loadRum, loadSynthetics, loadSecurity, searchLogs];
+      try {
+        for (const task of tasks) {
+          if (!hasActiveSession(version)) return;
+          try {
+            await task();
+          } catch (error) {
+            console.warn(error);
+          }
+        }
+        if (hasActiveSession(version) && !options.silent) setMessage("Monitoring data refreshed.", "ok");
+      } finally {
+        state.refreshInFlight = false;
+      }
+    }
+
+    async function createRule() {
+      await api("/api/alert-rules", {
+        method: "POST",
+        body: JSON.stringify({
+          name: $("ruleName").value,
+          service: $("ruleService").value || "*",
+          level: $("ruleLevel").value,
+          z_score_threshold: Number($("ruleThreshold").value || 2.5),
+          enabled: true,
+          tenant_id: "default"
+        })
+      });
+      await loadRules();
+    }
+
+    function setSection(section) {
+      state.section = section;
+      document.querySelectorAll(".section").forEach((panel) => panel.classList.toggle("active", panel.id === section));
+      document.querySelectorAll(".nav button").forEach((button) => button.classList.toggle("active", button.dataset.section === section));
+    }
+
+    function sendRumEvent(eventType, value, metadata = {}) {
+      const sessionId = localStorage.getItem("advancedRumSession") || crypto.randomUUID();
+      localStorage.setItem("advancedRumSession", sessionId);
+      fetch("/api/rum", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId, path: location.pathname, event_type: eventType, value, metadata, tenant_id: "default" })
+      }).catch(() => {});
+    }
+
+    document.querySelectorAll(".nav button").forEach((button) => button.addEventListener("click", () => setSection(button.dataset.section)));
+    $("loginButton").addEventListener("click", () => login().catch((error) => {
+      setAuth(false);
+      setMessage(`Login failed: ${error.message}`, "error");
+    }));
+    $("logoutButton").addEventListener("click", logoutNow);
+    $("refreshButton").addEventListener("click", () => refreshAll());
+    $("searchLogs").addEventListener("click", () => searchLogs().catch((error) => $("logsList").innerHTML = empty(error.message)));
+    $("saveRule").addEventListener("click", () => createRule().catch((error) => $("rulesList").innerHTML = empty(error.message)));
+
+    window.addEventListener("error", (event) => sendRumEvent("js_error", null, { message: event.message }));
+    window.addEventListener("load", () => {
+      sendRumEvent("page_load", Math.round(performance.now()), { user_agent: navigator.userAgent });
+      validateSession().then((ok) => {
+        if (ok) {
+          refreshAll();
+          startAutoRefresh();
+        }
+      });
+    });
+
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${protocol}://${location.host}/ws/alerts`);
+    ws.addEventListener("open", () => {
+      $("socketDot").classList.add("ok");
+      $("socketText").textContent = "live feed online";
+    });
+    ws.addEventListener("close", () => {
+      $("socketDot").classList.remove("ok");
+      $("socketText").textContent = "live feed offline";
+    });
+    ws.addEventListener("message", (event) => {
+      if (!state.token) return;
+      const anomaly = JSON.parse(event.data);
+      state.anomalies.unshift(anomaly);
+      state.anomalies = state.anomalies.slice(0, 100);
+      renderAnomalies();
+      if (state.metrics) {
+        state.metrics.anomaly_total = Number(state.metrics.anomaly_total || 0) + 1;
+        $("mAnomalies").textContent = state.metrics.anomaly_total;
+      }
+    });
+  </script>
+</body>
+</html>

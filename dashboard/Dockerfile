@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY dashboard ./dashboard
 COPY consumers ./consumers
 COPY storage ./storage
+COPY alerting ./alerting
 
 EXPOSE 8001
 

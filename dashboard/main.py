@@ -21,6 +21,7 @@ from consumers.base_consumer import decode_message, start_with_retry
 from consumers.config import settings
 from dashboard.ws.manager import manager
 from storage.db import async_session_factory, dispose_engine
+from alerting.ai_analyzer import analyze_anomaly
 
 
 logger = logging.getLogger(__name__)
@@ -534,6 +535,37 @@ async def delete_alert_rule(rule_id: int, tenant_id: str = "default") -> dict[st
     if result.rowcount == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Alert rule not found")
     return {"status": "deleted"}
+
+
+@app.get("/api/anomalies/{anomaly_id}/analysis", dependencies=[Depends(require_auth)])
+async def get_anomaly_analysis(anomaly_id: int, tenant_id: str = "default") -> dict[str, Any]:
+    """Run AI incident analysis for a specific stored anomaly event."""
+    async with async_session_factory() as session:
+        row = (await session.execute(
+            text(
+                """
+                SELECT tenant_id, service, level, metric, current_count, mean, std_dev, z_score, threshold, fired_at
+                FROM anomaly_events
+                WHERE id = :anomaly_id AND tenant_id = :tenant_id
+                """
+            ),
+            {"anomaly_id": anomaly_id, "tenant_id": tenant_id},
+        )).mappings().first()
+
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Anomaly not found")
+
+    anomaly = dict(row)
+    if anomaly.get("fired_at"):
+        anomaly["fired_at"] = anomaly["fired_at"].isoformat()
+
+    analysis = await analyze_anomaly(anomaly)
+    if analysis is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI analysis unavailable — check OPENAI_API_KEY in your .env",
+        )
+    return {"anomaly_id": anomaly_id, "analysis": analysis}
 
 
 @app.websocket("/ws/alerts")

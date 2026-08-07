@@ -35,6 +35,8 @@ class ConsumerSettings:
     smtp_port: int = int(getenv("SMTP_PORT", "1025"))
     smtp_user: str = getenv("SMTP_USER", "")
     smtp_password: str = getenv("SMTP_PASSWORD", "")
+    openai_api_key: str = getenv("OPENAI_API_KEY", "")
+    openai_model: str = getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 
 settings = ConsumerSettings()

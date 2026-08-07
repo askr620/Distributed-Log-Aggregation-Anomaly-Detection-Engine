@@ -9,6 +9,7 @@ from typing import Any
 from aiokafka import AIOKafkaConsumer
 from sqlalchemy import insert
 
+from alerting.ai_analyzer import analyze_anomaly
 from alerting.alert_router import AlertRouter
 from consumers.base_consumer import decode_message, start_with_retry
 from consumers.config import settings
@@ -91,6 +92,9 @@ async def consume_forever() -> None:
             if anomaly is None:
                 continue
             await save_anomaly(anomaly)
+            ai_analysis = await analyze_anomaly(anomaly)
+            if ai_analysis:
+                anomaly["ai_analysis"] = ai_analysis
             await router.route(anomaly)
     finally:
         await consumer.stop()

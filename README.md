@@ -236,6 +236,4 @@ Important values:
 | `SLACK_WEBHOOK_URL` | Optional Slack webhook URL |
 | `SMTP_*` | Optional email alert settings |
 
-## Interview Explanation
 
-I built a distributed log aggregation and anomaly detection backend in Python. Multiple mock services send structured logs to a FastAPI ingestion API. The API validates logs with Pydantic and publishes them to Kafka. Separate async consumers read from Kafka: one stores logs in TimescaleDB, another uses Redis sliding windows and Z-score analysis to detect error spikes, and another saves anomaly events and sends alerts. A WebSocket dashboard broadcasts anomaly events live to the browser. The entire system runs locally with Docker Compose.

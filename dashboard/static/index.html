@@ -716,6 +716,14 @@
         </div>
       </section>
     </main>
+
+    <!-- AI Analysis Modal -->
+    <div id="aiModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:520px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,0.5);position:relative;">
+        <button onclick="document.getElementById('aiModal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;line-height:1;">✕</button>
+        <div id="aiModalContent"></div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -931,10 +939,51 @@
       const html = state.anomalies.length ? state.anomalies.map((item) => {
         const severity = Number(item.z_score || 0) >= 7 ? "CRITICAL" : item.level;
         const type = severity === "CRITICAL" ? "critical" : "error";
-        return row(`<div class="row-grid"><div><strong>${item.service}</strong> ${badge(severity, type)}<br>Current ${formatNum(item.current_count)} vs mean ${formatNum(item.mean)} | Z-score ${formatNum(item.z_score)} | ${formatTime(item.fired_at)}</div><div>${badge(item.tenant_id || "default")}</div></div>`);
+        const aiBtn = item.id ? `<button class="button ai-btn" data-anomaly-id="${item.id}" style="font-size:11px;height:28px;padding:0 10px;border-color:rgba(168,85,247,0.5);background:rgba(168,85,247,0.12);color:#c084fc;">🤖 AI Analysis</button>` : "";
+        return row(`<div class="row-grid"><div><strong>${item.service}</strong> ${badge(severity, type)}<br>Current ${formatNum(item.current_count)} vs mean ${formatNum(item.mean)} | Z-score ${formatNum(item.z_score)} | ${formatTime(item.fired_at)}</div><div style="display:flex;gap:6px;align-items:center;">${badge(item.tenant_id || "default")}${aiBtn}</div></div>`);
       }).join("") : empty("No anomalies recorded.");
       $("anomalyList").innerHTML = html;
-      $("latestAnomalies").innerHTML = html;
+      $("latestAnomalies").innerHTML = state.anomalies.length ? state.anomalies.slice(0, 5).map((item) => {
+        const severity = Number(item.z_score || 0) >= 7 ? "CRITICAL" : item.level;
+        const type = severity === "CRITICAL" ? "critical" : "error";
+        return row(`<div class="row-grid"><div><strong>${item.service}</strong> ${badge(severity, type)}<br>Current ${formatNum(item.current_count)} vs mean ${formatNum(item.mean)} | Z-score ${formatNum(item.z_score)} | ${formatTime(item.fired_at)}</div><div>${badge(item.tenant_id || "default")}</div></div>`);
+      }).join("") : empty("No anomalies recorded.");
+      document.querySelectorAll(".ai-btn").forEach((btn) => {
+        btn.addEventListener("click", () => analyzeAnomaly(btn.dataset.anomalyId, btn));
+      });
+    }
+
+    async function analyzeAnomaly(anomalyId, btn) {
+      const modal = $("aiModal");
+      const content = $("aiModalContent");
+      content.innerHTML = `<div style="color:var(--muted);text-align:center;padding:32px 0;">⏳ Analyzing with AI...</div>`;
+      modal.style.display = "flex";
+      btn.disabled = true;
+      try {
+        const data = await api(`/api/anomalies/${anomalyId}/analysis`);
+        const a = data.analysis || {};
+        const checks = (a.recommended_checks || []).map((c, i) => `<li style="margin:6px 0;">${i + 1}. ${c}</li>`).join("");
+        content.innerHTML = `
+          <h3 style="margin:0 0 16px;color:var(--accent);font-size:15px;">🤖 AI Incident Analysis</h3>
+          <div style="display:grid;gap:12px;">
+            <div style="padding:12px;background:#0a121a;border:1px solid var(--border);border-radius:8px;">
+              <div style="color:var(--muted);font-size:11px;text-transform:uppercase;font-weight:900;margin-bottom:6px;">Possible Cause</div>
+              <div style="color:var(--text);font-size:13px;">${a.possible_cause || "—"}</div>
+            </div>
+            <div style="padding:12px;background:#0a121a;border:1px solid var(--border);border-radius:8px;">
+              <div style="color:var(--muted);font-size:11px;text-transform:uppercase;font-weight:900;margin-bottom:6px;">Affected Service</div>
+              <div style="color:var(--text);font-size:13px;">${a.affected_service || "—"}</div>
+            </div>
+            <div style="padding:12px;background:#0a121a;border:1px solid var(--border);border-radius:8px;">
+              <div style="color:var(--muted);font-size:11px;text-transform:uppercase;font-weight:900;margin-bottom:8px;">Recommended Checks</div>
+              <ul style="margin:0;padding:0;list-style:none;color:var(--text);font-size:13px;">${checks || "<li>No recommendations available.</li>"}</ul>
+            </div>
+          </div>`;
+      } catch (err) {
+        content.innerHTML = `<div style="color:var(--danger);padding:16px;">❌ AI analysis failed. Check that OPENAI_API_KEY is set in your .env file.<br><small style="color:var(--muted);">${err.message}</small></div>`;
+      } finally {
+        btn.disabled = false;
+      }
     }
 
     function renderInfra() {

@@ -360,7 +360,7 @@ async def anomaly_history(tenant_id: str = "default", limit: int = Query(default
         rows = (await session.execute(
             text(
                 """
-                SELECT tenant_id, service, level, metric, current_count, mean, std_dev, z_score, threshold, fired_at
+                SELECT id, tenant_id, service, level, metric, current_count, mean, std_dev, z_score, threshold, fired_at
                 FROM anomaly_events
                 WHERE tenant_id = :tenant_id
                 ORDER BY fired_at DESC

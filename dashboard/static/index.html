@@ -946,7 +946,8 @@
       $("latestAnomalies").innerHTML = state.anomalies.length ? state.anomalies.slice(0, 5).map((item) => {
         const severity = Number(item.z_score || 0) >= 7 ? "CRITICAL" : item.level;
         const type = severity === "CRITICAL" ? "critical" : "error";
-        return row(`<div class="row-grid"><div><strong>${item.service}</strong> ${badge(severity, type)}<br>Current ${formatNum(item.current_count)} vs mean ${formatNum(item.mean)} | Z-score ${formatNum(item.z_score)} | ${formatTime(item.fired_at)}</div><div>${badge(item.tenant_id || "default")}</div></div>`);
+        const aiBtn = item.id ? `<button class="button ai-btn" data-anomaly-id="${item.id}" style="font-size:11px;height:28px;padding:0 10px;border-color:rgba(168,85,247,0.5);background:rgba(168,85,247,0.12);color:#c084fc;">🤖 AI Analysis</button>` : "";
+        return row(`<div class="row-grid"><div><strong>${item.service}</strong> ${badge(severity, type)}<br>Current ${formatNum(item.current_count)} vs mean ${formatNum(item.mean)} | Z-score ${formatNum(item.z_score)} | ${formatTime(item.fired_at)}</div><div style="display:flex;gap:6px;align-items:center;">${badge(item.tenant_id || "default")}${aiBtn}</div></div>`);
       }).join("") : empty("No anomalies recorded.");
       document.querySelectorAll(".ai-btn").forEach((btn) => {
         btn.addEventListener("click", () => analyzeAnomaly(btn.dataset.anomalyId, btn));
